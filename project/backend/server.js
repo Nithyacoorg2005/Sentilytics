@@ -16,10 +16,9 @@ mongoose.connect(dbURI)
   .then(() => console.log("✅ MongoDB connected successfully!"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// --- (Your API routes will go here) ---
-// app.use('/api/auth', require('./routes/auth'));
+// --- THIS LINE IS NOW UNCOMMENTED AND ACTIVE ---
+app.use('/api/auth', require('./routes/auth'));
 
-// --- THIS IS THE CRUCIAL PART ---
 // It starts the server and keeps it running.
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
