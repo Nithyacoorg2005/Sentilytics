@@ -30,33 +30,33 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// File: /backend/routes/auth.js
 
 // --- SIGN-IN (LOGIN) ROUTE ---
 router.post('/login', async (req, res) => {
   try {
-    // Check if the user exists
+    // ... (all your existing try block code is here)
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials." });
     }
-
-    // Check if the password is correct
     const validPassword = await bcrypt.compare(req.body.password, user.password);
     if (!validPassword) {
       return res.status(400).json({ message: "Invalid credentials." });
     }
-    
-    // Create and assign a JSON Web Token (JWT)
     const token = jwt.sign(
-      { id: user._id, name: user.name }, 
-      process.env.JWT_SECRET, 
+      { id: user._id, name: user.name },
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
-
     res.status(200).json({ token, userId: user._id, name: user.name });
 
   } catch (error) {
-    res.status(500).json({ message: "An error occurred on the server.", error: error.message });
+    // --- THIS IS THE IMPORTANT CHANGE ---
+    // This line will print the hidden error to your terminal
+    console.error('LOGIN ERROR:', error); 
+    
+    res.status(500).json({ message: "An error occurred on the server." });
   }
 });
 
