@@ -1,5 +1,3 @@
-# File: /ml_server/app.py
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from transformers import pipeline
@@ -23,7 +21,8 @@ def format_emotions(model_output):
         emotions[emotion_data['label']] = round(emotion_data['score'] * 100)
     return emotions
 
-@app.route('/predict', methods=['POST'])
+# --- THIS IS THE CORRECTED ROUTE ---
+@app.route('/api/analyze/sentiment', methods=['POST'])
 def predict():
     data = request.get_json()
     text = data.get('text')

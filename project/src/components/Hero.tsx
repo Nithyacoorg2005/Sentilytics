@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Mic, MicOff } from 'lucide-react';
-import { LANGUAGES } from '../types';
+import { LANGUAGES } from '../types'; // We'll create this file next
 
+// --- Merged Props Interface ---
+// This now includes all necessary props from both versions.
 interface HeroProps {
   onAnalyze: (text: string, languageCode?: string) => void;
   isAnalyzing: boolean;
+  isLoggedIn: boolean; // Kept for future use or integration
   selectedLanguage: string;
   onLanguageChange: (lang: string) => void;
 }
@@ -14,7 +17,9 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
   const [isRecording, setIsRecording] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
+  // --- Speech Recognition Logic ---
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -26,10 +31,12 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
         const transcript = event.results[0][0].transcript;
         setText(transcript);
         setIsRecording(false);
-        onAnalyze(transcript, selectedLanguage);
+        // Automatically analyze after speech-to-text
+        onAnalyze(transcript, selectedLanguage === 'auto' ? undefined : selectedLanguage);
       };
 
       recognitionRef.current.onerror = () => {
+        console.error("Speech recognition error.");
         setIsRecording(false);
       };
 
@@ -38,24 +45,40 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
       };
     }
   }, [selectedLanguage, onAnalyze]);
+  
+  // --- Logic to close dropdown when clicking outside ---
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+        setIsLanguageOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAnalyze(text, selectedLanguage);
+    if (!text.trim()) return;
+    onAnalyze(text, selectedLanguage === 'auto' ? undefined : selectedLanguage);
   };
 
   const toggleRecording = () => {
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in your browser.');
+      // Use a more modern notification than alert() if possible in your app
+      console.error('Speech recognition is not supported in your browser.');
       return;
     }
 
     if (isRecording) {
       recognitionRef.current.stop();
-      setIsRecording(false);
     } else {
-      const langCode = selectedLanguage === 'auto' ? 'en' : selectedLanguage;
-      recognitionRef.current.lang = langCode === 'zh' ? 'zh-CN' : langCode === 'hi' ? 'hi-IN' : `${langCode}-${langCode.toUpperCase()}`;
+      // Set language for speech recognition
+      const langCode = selectedLanguage === 'auto' ? 'en-US' : LANGUAGES.find(l => l.code === selectedLanguage)?.speechCode || 'en-US';
+      recognitionRef.current.lang = langCode;
       recognitionRef.current.start();
       setIsRecording(true);
     }
@@ -81,8 +104,10 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
           "Because emotions speak louder than words."
         </p>
 
-        <div className="mb-8 animate-fade-in animation-delay-600">
-          <div className="relative inline-block">
+        {/* --- Language Dropdown --- */}
+        {/* THE FIX: Added `relative z-20` here to lift this entire section */}
+        <div className="mb-8 animate-fade-in animation-delay-600 relative z-20">
+          <div ref={languageDropdownRef} className="relative inline-block">
             <button
               onClick={() => setIsLanguageOpen(!isLanguageOpen)}
               className="flex items-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-200 hover:border-purple-400"
@@ -95,7 +120,7 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
             </button>
 
             {isLanguageOpen && (
-              <div className="absolute top-full mt-2 w-64 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-200 max-h-96 overflow-y-auto z-50">
+              <div className="absolute top-full mt-2 w-64 bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-200 max-h-60 overflow-y-auto z-50">
                 {LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
@@ -103,12 +128,12 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
                       onLanguageChange(lang.code);
                       setIsLanguageOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-purple-50 transition-colors ${
                       selectedLanguage === lang.code ? 'bg-purple-100' : ''
                     }`}
                   >
                     <span className="text-2xl">{lang.flag}</span>
-                    <div className="text-left">
+                    <div>
                       <div className="font-semibold text-gray-800">{lang.name}</div>
                       <div className="text-sm text-gray-500">{lang.nativeName}</div>
                     </div>
@@ -119,8 +144,9 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
           </div>
         </div>
 
+        {/* --- Text Input Form --- */}
         <form onSubmit={handleSubmit} className="animate-fade-in animation-delay-800">
-          <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/50 hover:shadow-purple-200/50 transition-all duration-300">
+          <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-6 md:p-8 border border-white/50 hover:shadow-purple-200/50 transition-all duration-300">
             <div className="relative">
               <textarea
                 value={text}
@@ -140,11 +166,7 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
                 }`}
                 disabled={isAnalyzing}
               >
-                {isRecording ? (
-                  <MicOff className="w-6 h-6 text-white" />
-                ) : (
-                  <Mic className="w-6 h-6 text-white" />
-                )}
+                {isRecording ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
               </button>
             </div>
 
@@ -166,15 +188,8 @@ export default function Hero({ onAnalyze, isAnalyzing, selectedLanguage, onLangu
             </button>
           </div>
         </form>
-
-        <div className="mt-12 flex justify-center gap-8 text-4xl animate-fade-in animation-delay-1000">
-          <span className="animate-float">😊</span>
-          <span className="animate-float animation-delay-200">😐</span>
-          <span className="animate-float animation-delay-400">😠</span>
-          <span className="animate-float animation-delay-600">😏</span>
-          <span className="animate-float animation-delay-800">💫</span>
-        </div>
       </div>
     </section>
   );
 }
+
